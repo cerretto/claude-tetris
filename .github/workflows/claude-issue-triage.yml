@@ -1,0 +1,79 @@
+name: Claude Issue Triage
+
+on:
+  issues:
+    types: [opened, edited]
+
+jobs:
+  triage:
+    # Skip pull requests (GitHub emits `issues` events for them too), bot-authored
+    # issues, and anything addressed to @claude (that belongs to claude.yml).
+    if: |
+      github.event.issue.pull_request == null &&
+      github.event.sender.type != 'Bot' &&
+      !contains(github.event.issue.body, '@claude') &&
+      !contains(github.event.issue.title, '@claude')
+
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write # required to apply labels and post the diagnosis comment
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Triage issue with Claude
+        id: claude-triage
+        uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: '--allowedTools "Bash(gh issue view:*),Bash(gh issue edit:*),Bash(gh issue comment:*),Bash(gh label list:*),Bash(gh api:*),Read,Grep,Glob"'
+          prompt: |
+            You are triaging issue #${{ github.event.issue.number }} of ${{ github.repository }},
+            a vanilla JavaScript + HTML5 Canvas Tetris game. Read CLAUDE.md first: it documents the
+            architecture and the invariants that span multiple files.
+
+            Do this, in order:
+
+            1. Read the issue:
+               `gh issue view ${{ github.event.issue.number }} --json title,body,labels,comments`
+
+            2. List the labels that exist in this repository: `gh label list`.
+               Pick ONLY from that set. NEVER create a new label, and never invent one that is not
+               listed. Apply your selection with
+               `gh issue edit ${{ github.event.issue.number }} --add-label "..."`.
+               Do not remove labels a human already applied.
+
+            3. Investigate the actual source before writing anything: game.js, index.html, style.css
+               and CLAUDE.md. A generic diagnosis is worthless — cite real functions and real lines.
+
+            4. Publish the diagnosis as an issue comment whose first line is exactly the marker
+               `<!-- claude-triage -->`. Before posting, look for an existing comment carrying that
+               marker:
+                 `gh api repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments --jq '.[] | select(.body | startswith("<!-- claude-triage -->")) | .id'`
+               If one exists, UPDATE it with
+                 `gh api --method PATCH repos/${{ github.repository }}/issues/comments/<id> -f body=@<file>`
+               instead of adding a second comment. Only post a new comment when none exists.
+
+            Write the comment body in Spanish (this project's user-facing text and README are in
+            Spanish), using exactly these sections:
+
+            - **Clasificación** — issue type and the labels you applied, one line justifying each.
+            - **Qué pasa** — the problem restated in technical terms.
+            - **Dónde vive** — concrete files and functions (e.g. `game.js:collide`, `tryRotate`).
+            - **Invariantes en juego** — which CLAUDE.md invariants a fix could break: the
+              `PIECES`/`COLORS`/`randomPiece()` coupling, the canvas size tied to `COLS`/`ROWS`/`BLOCK`,
+              the `merge → clearLines → spawn` cycle, and the three places the controls are documented.
+            - **Cómo reproducir** — concrete steps, or "no reproducible con la info dada" plus what is missing.
+            - **Enfoque sugerido** — outline of the fix. Do not write the code.
+            - **Criterios de aceptación** — a verifiable checklist.
+            - **Confianza** — alta / media / baja, and why.
+
+            Do not write code, do not open pull requests, and do not close the issue. This workflow
+            only classifies and diagnoses.
