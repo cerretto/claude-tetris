@@ -62,7 +62,12 @@ jobs:
                instead of adding a second comment. Only post a new comment when none exists.
 
             Write the comment body in Spanish (this project's user-facing text and README are in
-            Spanish), using exactly these sections:
+            Spanish) and format it as GitHub Flavored Markdown so GitHub renders it correctly:
+            `##` headings for each section, `-` or `- [ ]` for lists, `**bold**` for emphasis,
+            backticks for identifiers and file paths, and fenced code blocks with a language tag
+            (```js) for any snippet. Do not emit raw HTML other than the marker comment, and do not
+            wrap the whole comment in a code fence. Use exactly these sections, each one rendered as
+            its own `##` heading:
 
             - **Clasificación** — issue type and the labels you applied, one line justifying each.
             - **Qué pasa** — the problem restated in technical terms.
