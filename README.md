@@ -18,6 +18,7 @@ Implementación del clásico **Tetris** en JavaScript vanilla, usando HTML5 Canv
     - [Opción 2: servidor local (recomendado)](#opción-2-servidor-local-recomendado)
   - [Controles](#controles)
     - [Tabla de récords](#tabla-de-récords)
+  - [Skins visuales](#skins-visuales)
   - [Cómo funciona](#cómo-funciona)
     - [1. `index.html`](#1-indexhtml)
     - [2. `style.css`](#2-stylecss)
@@ -44,6 +45,7 @@ Es una versión jugable del Tetris clásico con todas las mecánicas que esperar
 - **Niveles** que aumentan cada 10 líneas y aceleran la caída.
 - **Pausa** y **Game Over** con opción de reinicio.
 - **Pantalla de inicio** y **tabla de récords local** (top 5 en `localStorage`) con mejor combo y líneas máximas históricas.
+- **Skins visuales** seleccionables (Retro, Neón, Pastel y Pixel art) que se recuerdan entre sesiones.
 
 ---
 
@@ -111,6 +113,21 @@ Mientras el menú está abierto se ignoran las teclas del juego, y la tecla que 
 
 ---
 
+## Skins visuales
+
+En el panel lateral, el selector **SKIN** cambia el aspecto del tablero y de la vista previa al instante, incluso con el juego en pausa o tras un Game Over:
+
+| Skin          | Aspecto                                                                 |
+| ------------- | ----------------------------------------------------------------------- |
+| **Retro**     | El aspecto original: bloques planos con una franja de brillo superior. |
+| **Neón**      | Fondo negro y bloques con contorno luminoso (`shadowBlur`).            |
+| **Pastel**    | Colores suaves y esquinas redondeadas (`roundRect`).                   |
+| **Pixel art** | Cada bloque con textura de píxeles en tres tonos (bisel + tramado).    |
+
+La elección se guarda en `localStorage` con la clave `tetris.skin` y se restaura al recargar (por defecto, **Retro**).
+
+---
+
 ## Cómo funciona
 
 El juego se compone de tres archivos que cooperan:
@@ -120,7 +137,7 @@ El juego se compone de tres archivos que cooperan:
 Define la estructura visual:
 
 - Un `<canvas id="board">` de **300 × 600** píxeles donde se renderiza el tablero.
-- Un panel lateral con `SCORE`, `LINES`, `LEVEL`, vista de la siguiente pieza y la lista de controles.
+- Un panel lateral con `SCORE`, `LINES`, `LEVEL`, vista de la siguiente pieza, selector de skin y la lista de controles.
 - Un overlay para los estados **PAUSA** y **GAME OVER**.
 
 ### 2. `style.css`
@@ -196,7 +213,7 @@ Algunos parámetros fáciles de tunear en `game.js`:
 | `COLS`         | Columnas del tablero                     | `10`                  |
 | `ROWS`         | Filas del tablero                        | `20`                  |
 | `BLOCK`        | Tamaño en píxeles de cada celda          | `30`                  |
-| `COLORS`       | Paleta de colores por tipo de pieza      | 7 colores             |
+| `SKINS`        | Skins: paleta, fondo, grilla y dibujo    | 4 skins               |
 | `LINE_SCORES`  | Puntos por 1, 2, 3 o 4 líneas eliminadas | `[0,100,300,500,800]` |
 | `dropInterval` | Velocidad inicial de caída en ms         | `1000`                |
 

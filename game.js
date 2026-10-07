@@ -4,16 +4,120 @@ const COLS = 10;
 const ROWS = 20;
 const BLOCK = 30;
 
-const COLORS = [
-  null,
-  '#4dd0e1', // I - cyan
-  '#ffd54f', // O - yellow
-  '#ba68c8', // T - purple
-  '#81c784', // S - green
-  '#e57373', // Z - red
-  '#64b5f6', // J - pale blue
-  '#ffb74d', // L - orange
-];
+// ---- Skins ----
+// Each skin's `colors` is aligned with PIECES: index 0 = empty, 1..7 = I,O,T,S,Z,J,L.
+// `drawBlock` paints one cell; globalAlpha (ghost piece) is set by the caller.
+function shadeColor(hex, amount) {
+  const n = parseInt(hex.slice(1), 16);
+  const mix = v => Math.round(amount < 0 ? v * (1 + amount) : v + (255 - v) * amount);
+  const r = mix(n >> 16), g = mix((n >> 8) & 0xff), b = mix(n & 0xff);
+  return `rgb(${r},${g},${b})`;
+}
+
+function roundedRectPath(context, x, y, w, h, radius) {
+  context.beginPath();
+  if (typeof context.roundRect === 'function') {
+    context.roundRect(x, y, w, h, radius);
+    return;
+  }
+  context.moveTo(x + radius, y);
+  context.lineTo(x + w - radius, y);
+  context.quadraticCurveTo(x + w, y, x + w, y + radius);
+  context.lineTo(x + w, y + h - radius);
+  context.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+  context.lineTo(x + radius, y + h);
+  context.quadraticCurveTo(x, y + h, x, y + h - radius);
+  context.lineTo(x, y + radius);
+  context.quadraticCurveTo(x, y, x + radius, y);
+  context.closePath();
+}
+
+const SKINS = {
+  retro: {
+    name: 'Retro',
+    colors: [
+      null,
+      '#4dd0e1', // I - cyan
+      '#ffd54f', // O - yellow
+      '#ba68c8', // T - purple
+      '#81c784', // S - green
+      '#e57373', // Z - red
+      '#64b5f6', // J - pale blue
+      '#ffb74d', // L - orange
+    ],
+    boardBg: '#1a1a25',
+    gridColor: '#22222e',
+    drawBlock(context, x, y, colorIndex, size) {
+      context.fillStyle = this.colors[colorIndex];
+      context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
+      // highlight
+      context.fillStyle = 'rgba(255,255,255,0.12)';
+      context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
+    },
+  },
+  neon: {
+    name: 'Neón',
+    colors: [null, '#00f0ff', '#fff200', '#d400ff', '#39ff14', '#ff073a', '#2d6bff', '#ff8c00'],
+    boardBg: '#000000',
+    gridColor: '#0d0d14',
+    drawBlock(context, x, y, colorIndex, size) {
+      const color = this.colors[colorIndex];
+      const px = x * size + 3, py = y * size + 3, s = size - 6;
+      context.shadowColor = color;
+      context.shadowBlur = 12;
+      context.fillStyle = shadeColor(color, -0.75);
+      context.fillRect(px, py, s, s);
+      context.strokeStyle = color;
+      context.lineWidth = 2;
+      context.strokeRect(px, py, s, s);
+      context.shadowBlur = 0;
+      context.shadowColor = 'transparent';
+    },
+  },
+  pastel: {
+    name: 'Pastel',
+    colors: [null, '#a8e6f0', '#fdf1a8', '#d9c2f0', '#bfe8c4', '#f6b8c0', '#b8d4f6', '#fcd2a8'],
+    boardBg: '#2b2838',
+    gridColor: '#353247',
+    drawBlock(context, x, y, colorIndex, size) {
+      const px = x * size + 2, py = y * size + 2, s = size - 4;
+      roundedRectPath(context, px, py, s, s, s * 0.25);
+      context.fillStyle = this.colors[colorIndex];
+      context.fill();
+      roundedRectPath(context, px + 3, py + 3, s - 6, s * 0.3, s * 0.12);
+      context.fillStyle = 'rgba(255,255,255,0.35)';
+      context.fill();
+    },
+  },
+  pixel: {
+    name: 'Pixel art',
+    colors: [null, '#2ce8f5', '#fee761', '#b55088', '#63c74d', '#e43b44', '#0099db', '#f77622'],
+    boardBg: '#181425',
+    gridColor: '#262b44',
+    drawBlock(context, x, y, colorIndex, size) {
+      const color = this.colors[colorIndex];
+      const light = shadeColor(color, 0.45);
+      const dark = shadeColor(color, -0.4);
+      const n = 6; // texture resolution: n × n "pixels" per block
+      const p = size / n;
+      const ox = x * size, oy = y * size;
+      for (let r = 0; r < n; r++) {
+        for (let c = 0; c < n; c++) {
+          let tone = color;
+          if (r === 0 || c === 0) tone = light;                 // top/left bevel
+          else if (r === n - 1 || c === n - 1) tone = dark;     // bottom/right bevel
+          else if ((r + c) % 4 === 0) tone = shadeColor(color, -0.15); // inner dither
+          context.fillStyle = tone;
+          context.fillRect(Math.floor(ox + c * p), Math.floor(oy + r * p), Math.ceil(p), Math.ceil(p));
+        }
+      }
+    },
+  },
+};
+
+const DEFAULT_SKIN = 'retro';
+const SKIN_STORAGE_KEY = 'tetris.skin';
+let activeSkin = SKINS[DEFAULT_SKIN];
 
 const PIECES = [
   null,
@@ -159,18 +263,14 @@ function updateHUD() {
 
 function drawBlock(context, x, y, colorIndex, size, alpha) {
   if (!colorIndex) return;
-  const color = COLORS[colorIndex];
+  context.save();
   context.globalAlpha = alpha ?? 1;
-  context.fillStyle = color;
-  context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
-  // highlight
-  context.fillStyle = 'rgba(255,255,255,0.12)';
-  context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
-  context.globalAlpha = 1;
+  activeSkin.drawBlock(context, x, y, colorIndex, size, alpha);
+  context.restore();
 }
 
 function drawGrid() {
-  ctx.strokeStyle = '#22222e';
+  ctx.strokeStyle = activeSkin.gridColor;
   ctx.lineWidth = 0.5;
   for (let c = 1; c < COLS; c++) {
     ctx.beginPath();
@@ -187,7 +287,8 @@ function drawGrid() {
 }
 
 function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = activeSkin.boardBg;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
   drawGrid();
 
   // board
@@ -210,7 +311,8 @@ function draw() {
 
 function drawNext() {
   const NB = 30;
-  nextCtx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
+  nextCtx.fillStyle = activeSkin.boardBg;
+  nextCtx.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
   const shape = next.shape;
   const offX = Math.floor((4 - shape[0].length) / 2);
   const offY = Math.floor((4 - shape.length) / 2);
@@ -591,6 +693,43 @@ document.addEventListener('keydown', e => {
 });
 
 restartBtn.addEventListener('click', init);
+
+// ---- Skins ----
+const skinSelect = document.getElementById('skin-select');
+
+function loadSkinKey() {
+  try {
+    const saved = localStorage.getItem(SKIN_STORAGE_KEY);
+    if (saved && Object.hasOwn(SKINS, saved)) return saved;
+  } catch (_) { /* storage unavailable */ }
+  return DEFAULT_SKIN;
+}
+
+function applySkin(key) {
+  if (!Object.hasOwn(SKINS, key)) key = DEFAULT_SKIN;
+  activeSkin = SKINS[key];
+  skinSelect.value = key;
+  // Redraw immediately: the loop may be stopped (pause / game over).
+  if (current) draw();
+  if (next) drawNext();
+}
+
+for (const [key, skin] of Object.entries(SKINS)) {
+  skinSelect.add(new Option(skin.name, key));
+}
+
+skinSelect.addEventListener('change', () => {
+  applySkin(skinSelect.value);
+  try { localStorage.setItem(SKIN_STORAGE_KEY, skinSelect.value); } catch (_) { /* ignore */ }
+  skinSelect.blur(); // return keyboard focus to the game
+});
+
+// While the select is focused, keep game keys from also reaching the game.
+skinSelect.addEventListener('keydown', e => {
+  if (e.code.startsWith('Arrow') || e.code === 'Space') e.stopPropagation();
+});
+
+applySkin(loadSkinKey());
 
 // The game no longer auto-starts: show the start screen with the records table.
 drawGrid();
