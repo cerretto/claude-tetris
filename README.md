@@ -17,6 +17,7 @@ Implementación del clásico **Tetris** en JavaScript vanilla, usando HTML5 Canv
     - [Opción 1: abrir el archivo directamente](#opción-1-abrir-el-archivo-directamente)
     - [Opción 2: servidor local (recomendado)](#opción-2-servidor-local-recomendado)
   - [Controles](#controles)
+    - [Tabla de récords](#tabla-de-récords)
   - [Cómo funciona](#cómo-funciona)
     - [1. `index.html`](#1-indexhtml)
     - [2. `style.css`](#2-stylecss)
@@ -42,6 +43,7 @@ Es una versión jugable del Tetris clásico con todas las mecánicas que esperar
 - **Sistema de puntuación** clásico de Tetris (100 / 300 / 500 / 800 multiplicado por nivel).
 - **Niveles** que aumentan cada 10 líneas y aceleran la caída.
 - **Pausa** y **Game Over** con opción de reinicio.
+- **Pantalla de inicio** y **tabla de récords local** (top 5 en `localStorage`) con mejor combo y líneas máximas históricas.
 
 ---
 
@@ -96,6 +98,16 @@ Al pulsar `P` o `Esc` el juego se detiene y aparece un menú con:
 - **Nivel inicial** (1–10): nivel con el que empieza la próxima partida (o al pulsar **Reiniciar**). La velocidad de caída se ajusta a ese nivel y sigue subiendo cada 10 líneas.
 
 Mientras el menú está abierto se ignoran las teclas del juego, y la tecla que cierra el menú no se aplica como movimiento.
+
+### Tabla de récords
+
+- El juego ya no arranca solo: al cargar la página aparece una **pantalla de inicio** con la tabla de récords y el botón **Jugar**.
+- Se guardan los **5 mejores** resultados en `localStorage` (clave `tetris.highscores`), cada uno con nombre, puntos, líneas, combo máximo y fecha.
+- Al terminar una partida, si la puntuación (mayor que 0) entra en el top 5, se indica el puesto y se pide un nombre (máx. 12 caracteres; vacío = «Anónimo»). Se guarda con **Guardar** o `Enter`, y la fila nueva queda resaltada. Mientras escribes, las teclas del juego (`Espacio`, `P`…) no se interceptan.
+- **Combo**: cantidad de piezas consecutivas que, al fijarse, eliminan al menos una línea. Se reinicia a 0 cuando una pieza se fija sin eliminar líneas.
+- **Mejor combo** y **Líneas máx.** históricos se guardan aparte (clave `tetris.stats`) y se actualizan en cada partida, aunque esa partida no entre en el top 5.
+- **Borrar récords** (en la pantalla de inicio) pide confirmación y vacía tanto la tabla como los históricos.
+- Si `localStorage` no está disponible o contiene datos corruptos, el juego sigue funcionando con una tabla en memoria.
 
 ---
 

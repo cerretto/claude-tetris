@@ -258,3 +258,145 @@ kbd {
   color: #555570;
   text-align: center;
 }
+
+/* ---- High scores ---- */
+.hs-block.hidden,
+.hs-entry.hidden,
+.hs-new-record.hidden,
+.start-screen.hidden {
+  display: none;
+}
+
+.start-screen {
+  background: rgba(10, 10, 20, 0.92);
+}
+
+.start-title {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: 4px;
+  color: #7aa2f7;
+}
+
+.hs-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.hs-table {
+  border-collapse: collapse;
+  font-size: 12px;
+  min-width: 360px;
+}
+
+.hs-table th,
+.hs-table td {
+  padding: 4px 8px;
+  text-align: right;
+  border-bottom: 1px solid #2a2a3a;
+}
+
+.hs-table th {
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: #555570;
+  font-weight: 600;
+}
+
+.hs-table td {
+  font-family: 'Courier New', Courier, monospace;
+  color: #c0c0d0;
+}
+
+.hs-table .hs-name {
+  text-align: left;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: pre;
+}
+
+.hs-table .hs-empty {
+  text-align: center;
+  color: #666;
+  font-style: italic;
+}
+
+.hs-table tr.hs-highlight td {
+  background: rgba(255, 213, 79, 0.18);
+  color: #ffd54f;
+  font-weight: 700;
+}
+
+.hs-stats {
+  font-size: 12px;
+  color: #888;
+}
+
+.hs-new-record {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffd54f;
+}
+
+.hs-entry {
+  display: flex;
+  gap: 6px;
+}
+
+.hs-entry input {
+  background: #1a1a25;
+  border: 1px solid #3a3a5a;
+  border-radius: 6px;
+  color: #e0e0e0;
+  padding: 8px 10px;
+  font-size: 14px;
+  width: 160px;
+  user-select: text;
+}
+
+.hs-entry input:focus {
+  outline: none;
+  border-color: #7aa2f7;
+}
+
+.hs-btn {
+  background: #2a2a3a;
+  color: #e0e0e0;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: background 0.15s;
+}
+
+.hs-btn:hover {
+  background: #3a3a5a;
+}
+
+.hs-btn-primary {
+  background: #7aa2f7;
+  color: #0f0f17;
+  padding: 10px 36px;
+  font-size: 15px;
+}
+
+.hs-btn-primary:hover {
+  background: #9bbdff;
+}
+
+.hs-btn-danger {
+  background: transparent;
+  color: #e57373;
+  border: 1px solid #e57373;
+  font-size: 11px;
+}
+
+.hs-btn-danger:hover {
+  background: rgba(229, 115, 115, 0.15);
+}

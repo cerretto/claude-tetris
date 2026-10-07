@@ -103,6 +103,7 @@ function clearLines() {
       r++;
     }
   }
+  updateCombo(cleared);
   if (cleared) {
     lines += cleared;
     score += (LINE_SCORES[cleared] || 0) * level;
@@ -223,6 +224,7 @@ function endGame() {
   cancelAnimationFrame(animId);
   overlayTitle.textContent = 'GAME OVER';
   overlayScore.textContent = `Puntuación: ${score.toLocaleString()}`;
+  showGameOverRecords();
   overlay.classList.remove('hidden');
 }
 
@@ -261,6 +263,9 @@ function init() {
   lines = 0;
   gameStartLevel = startLevel;
   level = startLevel;
+  combo = 0;
+  maxCombo = 0;
+  resetHighScoreUI();
   paused = false;
   gameOver = false;
   dropInterval = Math.max(100, 1000 - (level - 1) * 90);
@@ -324,7 +329,235 @@ startLevelSelect.addEventListener('change', () => {
   startLevel = Math.min(10, Math.max(1, Number.isNaN(value) ? 1 : value));
 });
 
+// ---- High scores ----
+// Top-5 table persisted in localStorage. Historical bests (combo / lines) are
+// stored separately so they survive even when a game does not reach the top 5.
+
+const HS_KEY = 'tetris.highscores';
+const HS_STATS_KEY = 'tetris.stats';
+const HS_MAX = 5;
+const HS_NAME_MAX = 12;
+const HS_DEFAULT_NAME = 'Anónimo';
+
+const startScreen = document.getElementById('start-screen');
+const playBtn = document.getElementById('play-btn');
+const clearHsBtn = document.getElementById('clear-hs-btn');
+const startHsTable = document.getElementById('start-hs-table');
+const startHsStats = document.getElementById('start-hs-stats');
+const gameoverRecords = document.getElementById('gameover-records');
+const gameoverHsTable = document.getElementById('gameover-hs-table');
+const gameoverHsStats = document.getElementById('gameover-hs-stats');
+const hsNewRecord = document.getElementById('hs-new-record');
+const hsEntry = document.getElementById('hs-entry');
+const hsName = document.getElementById('hs-name');
+
+// combo: consecutive locked pieces that each cleared >= 1 line.
+let combo = 0;
+let maxCombo = 0;
+// Score waiting to be saved with a player name (null when nothing pending).
+let pendingEntry = null;
+// In-memory copies, so the UI keeps working when storage is unavailable.
+let highScores = loadHighScores();
+let hsStats = loadStats();
+
+function updateCombo(cleared) {
+  if (cleared) {
+    combo++;
+    maxCombo = Math.max(maxCombo, combo);
+  } else {
+    combo = 0;
+  }
+}
+
+function toCount(value) {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+}
+
+function sanitizeName(value) {
+  const name = String(value ?? '').trim().slice(0, HS_NAME_MAX);
+  return name || HS_DEFAULT_NAME;
+}
+
+function readJSON(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeJSON(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Storage full or blocked: keep the in-memory copy only.
+  }
+}
+
+function removeKey(key) {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // Ignore: in-memory state is cleared anyway.
+  }
+}
+
+function loadHighScores() {
+  const data = readJSON(HS_KEY);
+  if (!Array.isArray(data)) return [];
+  return data
+    .filter(e => e && typeof e === 'object' && toCount(e.score) > 0)
+    .map(e => ({
+      name: sanitizeName(e.name),
+      score: toCount(e.score),
+      lines: toCount(e.lines),
+      maxCombo: toCount(e.maxCombo),
+      date: typeof e.date === 'string' ? e.date : '',
+    }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, HS_MAX);
+}
+
+function loadStats() {
+  const data = readJSON(HS_STATS_KEY);
+  const fromTable = highScores.reduce(
+    (acc, e) => ({ bestCombo: Math.max(acc.bestCombo, e.maxCombo), maxLines: Math.max(acc.maxLines, e.lines) }),
+    { bestCombo: 0, maxLines: 0 }
+  );
+  return {
+    bestCombo: Math.max(toCount(data?.bestCombo), fromTable.bestCombo),
+    maxLines: Math.max(toCount(data?.maxLines), fromTable.maxLines),
+  };
+}
+
+// Index the score would occupy in the table, or -1 if it does not qualify.
+function highScoreRank(value) {
+  if (value <= 0) return -1;
+  const idx = highScores.findIndex(e => value > e.score);
+  if (idx !== -1) return idx;
+  return highScores.length < HS_MAX ? highScores.length : -1;
+}
+
+function formatDate(iso) {
+  const d = new Date(iso);
+  return isNaN(d) ? '-' : d.toLocaleDateString('es', { day: '2-digit', month: '2-digit', year: '2-digit' });
+}
+
+function renderTable(table, highlight) {
+  table.replaceChildren();
+  const head = table.createTHead().insertRow();
+  for (const label of ['#', 'Nombre', 'Puntos', 'Líneas', 'Combo', 'Fecha']) {
+    const th = document.createElement('th');
+    th.textContent = label;
+    if (label === 'Nombre') th.className = 'hs-name';
+    head.appendChild(th);
+  }
+  const body = table.createTBody();
+  if (!highScores.length) {
+    const cell = body.insertRow().insertCell();
+    cell.colSpan = 6;
+    cell.className = 'hs-empty';
+    cell.textContent = 'Sin récords todavía';
+    return;
+  }
+  highScores.forEach((e, i) => {
+    const row = body.insertRow();
+    if (e === highlight) row.className = 'hs-highlight';
+    const values = [i + 1, e.name, e.score.toLocaleString(), e.lines, e.maxCombo, formatDate(e.date)];
+    values.forEach((v, col) => {
+      const cell = row.insertCell();
+      if (col === 1) cell.className = 'hs-name';
+      cell.textContent = v; // textContent: player names are never parsed as HTML
+    });
+  });
+}
+
+function renderStats(el) {
+  el.textContent = `Mejor combo: ${hsStats.bestCombo} · Líneas máx.: ${hsStats.maxLines}`;
+}
+
+function renderStartScreen() {
+  renderTable(startHsTable, null);
+  renderStats(startHsStats);
+}
+
+function renderGameOverRecords(highlight) {
+  renderTable(gameoverHsTable, highlight);
+  renderStats(gameoverHsStats);
+}
+
+function recordGameStats() {
+  hsStats = {
+    bestCombo: Math.max(hsStats.bestCombo, maxCombo),
+    maxLines: Math.max(hsStats.maxLines, lines),
+  };
+  writeJSON(HS_STATS_KEY, hsStats);
+}
+
+function showGameOverRecords() {
+  recordGameStats();
+  const rank = highScoreRank(score);
+  pendingEntry = rank === -1 ? null : { score, lines, maxCombo, date: new Date().toISOString() };
+  if (pendingEntry) {
+    hsNewRecord.textContent = `¡Nuevo récord! Entras en el top ${HS_MAX} (puesto ${rank + 1})`;
+    hsNewRecord.classList.remove('hidden');
+    hsName.value = '';
+    hsEntry.classList.remove('hidden');
+  }
+  renderGameOverRecords(null);
+  gameoverRecords.classList.remove('hidden');
+  if (pendingEntry) hsName.focus();
+}
+
+function saveHighScore() {
+  if (!pendingEntry) return;
+  const entry = { name: sanitizeName(hsName.value), ...pendingEntry };
+  pendingEntry = null;
+  highScores = [...highScores, entry].sort((a, b) => b.score - a.score).slice(0, HS_MAX);
+  writeJSON(HS_KEY, highScores);
+  hsName.blur();
+  hsEntry.classList.add('hidden');
+  hsNewRecord.textContent = `¡Récord guardado! Puesto ${highScores.indexOf(entry) + 1}`;
+  renderGameOverRecords(entry);
+}
+
+function resetHighScoreUI() {
+  pendingEntry = null;
+  // Drop focus from Jugar/Reiniciar so Space/Enter during play can't re-click them.
+  if (document.activeElement instanceof HTMLButtonElement) document.activeElement.blur();
+  startScreen.classList.add('hidden');
+  gameoverRecords.classList.add('hidden');
+  hsEntry.classList.add('hidden');
+  hsNewRecord.classList.add('hidden');
+}
+
+function clearHighScores() {
+  if (!confirm('¿Borrar todos los récords? Esta acción no se puede deshacer.')) return;
+  highScores = [];
+  hsStats = { bestCombo: 0, maxLines: 0 };
+  removeKey(HS_KEY);
+  removeKey(HS_STATS_KEY);
+  renderStartScreen();
+}
+
+function isTypingTarget(target) {
+  return target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
+}
+
+hsEntry.addEventListener('submit', e => {
+  e.preventDefault();
+  saveHighScore();
+});
+playBtn.addEventListener('click', init);
+clearHsBtn.addEventListener('click', clearHighScores);
+
 document.addEventListener('keydown', e => {
+  // Ignore input before the first game.
+  if (!startScreen.classList.contains('hidden')) return;
+  // Let form fields (e.g. the high-score name) receive keys; pause-menu controls still handle P/Esc below.
+  if (isTypingTarget(e.target) && !pauseMenu.contains(e.target)) return;
   if (e.code === 'KeyP' || e.code === 'Escape') {
     e.preventDefault();
     if (!e.repeat) togglePause();
@@ -359,4 +592,6 @@ document.addEventListener('keydown', e => {
 
 restartBtn.addEventListener('click', init);
 
-init();
+// The game no longer auto-starts: show the start screen with the records table.
+drawGrid();
+renderStartScreen();
