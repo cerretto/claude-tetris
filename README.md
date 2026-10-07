@@ -84,7 +84,18 @@ Después abre `http://localhost:8000` en el navegador.
 | `↑` o `X` | Rotar la pieza en sentido horario |
 | `↓`       | Soft drop (bajar más rápido)      |
 | `Espacio` | Hard drop (caída instantánea)     |
-| `P`       | Pausar / reanudar                 |
+| `P` / `Esc` | Abrir / cerrar el menú de pausa |
+
+### Menú de pausa
+
+Al pulsar `P` o `Esc` el juego se detiene y aparece un menú con:
+
+- **Reanudar**: continúa la partida (también con `P` o `Esc`).
+- **Reiniciar**: empieza una partida nueva sin recargar la página.
+- **Ver controles**: despliega la lista de teclas.
+- **Nivel inicial** (1–10): nivel con el que empieza la próxima partida (o al pulsar **Reiniciar**). La velocidad de caída se ajusta a ese nivel y sigue subiendo cada 10 líneas.
+
+Mientras el menú está abierto se ignoran las teclas del juego, y la tecla que cierra el menú no se aplica como movimiento.
 
 ---
 
