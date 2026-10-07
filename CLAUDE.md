@@ -25,10 +25,11 @@ Three files: `index.html` (DOM + two canvases + overlay), `style.css` (dark them
 
 Key invariants that span multiple places:
 
-- **One number encodes piece type, cell value, and color.** `PIECES[i]` shapes contain the value `i`, locked cells in `board` store that same value, and `COLORS[i]` renders it. Index `0`/`null` means empty. Adding or reordering pieces requires keeping `PIECES`, `COLORS`, and `randomPiece()` (`Math.random() * 7 + 1`) in sync.
+- **One number encodes piece type, cell value, and color.** `PIECES[i]` shapes contain the value `i`, locked cells in `board` store that same value, and the active skin's `colors[i]` (`activeSkin.colors`) renders it. Index `0`/`null` means empty. Adding or reordering pieces requires keeping `PIECES`, the `colors` array of every entry in `SKINS`, and `randomPiece()` (`Math.random() * 7 + 1`) in sync.
 - **Canvas size is coupled to constants.** `<canvas id="board">` in `index.html` must be `COLS × BLOCK` by `ROWS × BLOCK`. `drawNext()` assumes a 4×4 grid of 30px cells, matching the 120×120 `#next-canvas`.
 - **Game loop:** `requestAnimationFrame(loop)` accumulates `dt` into `dropAccum`; when it exceeds `dropInterval` the piece falls or `lockPiece()` runs (`merge` → `clearLines` → `spawn`). Game over is detected in `spawn()` when the new piece collides immediately.
 - **Pause / game over** stop the loop via `cancelAnimationFrame(animId)`; resuming calls `loop()` again after resetting `lastTime`. The `keydown` handler ignores input while `paused || gameOver`, except `KeyP`.
+- **Skins:** `SKINS` (section `// ---- Skins ----`) maps a key to `{ name, colors, boardBg, gridColor, drawBlock }`. The global `drawBlock()` keeps its signature, sets `globalAlpha` inside `save()/restore()` and delegates to `activeSkin.drawBlock`; skins that touch other context state (e.g. neon's `shadowBlur`) must reset it. `draw()`/`drawNext()` paint `boardBg`, `drawGrid()` uses `gridColor`. The choice persists in `localStorage` key `tetris.skin`; `applySkin()` redraws immediately because the loop may be stopped.
 - **Collision** (`collide`) allows cells with negative `y` (above the board) but rejects out-of-bounds `x` and `y >= ROWS`. Rotation (`tryRotate`) is `rotateCW` plus simple horizontal kicks `[0, -1, 1, -2, 2]` — not SRS.
 - **Scoring/levels:** `LINE_SCORES[cleared] * level`; hard drop +2/row, soft drop +1/row; `level = floor(lines / 10) + 1`; `dropInterval = max(100, 1000 - (level - 1) * 90)`.
 
