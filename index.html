@@ -48,7 +48,28 @@
       <div class="overlay-box">
         <p id="overlay-title">GAME OVER</p>
         <p id="overlay-score"></p>
+        <div id="gameover-records" class="hs-block hidden">
+          <p id="hs-new-record" class="hs-new-record hidden"></p>
+          <form id="hs-entry" class="hs-entry hidden" autocomplete="off">
+            <input id="hs-name" type="text" maxlength="12" placeholder="Tu nombre" aria-label="Tu nombre" />
+            <button type="submit" id="hs-save-btn" class="hs-btn">Guardar</button>
+          </form>
+          <table class="hs-table" id="gameover-hs-table"></table>
+          <p class="hs-stats" id="gameover-hs-stats"></p>
+        </div>
         <button id="restart-btn">Reiniciar</button>
+      </div>
+    </div>
+
+    <div id="start-screen" class="overlay start-screen">
+      <div class="overlay-box">
+        <p class="start-title">RÉCORDS</p>
+        <div class="hs-block">
+          <table class="hs-table" id="start-hs-table"></table>
+          <p class="hs-stats" id="start-hs-stats"></p>
+        </div>
+        <button id="play-btn" class="hs-btn hs-btn-primary">Jugar</button>
+        <button id="clear-hs-btn" class="hs-btn hs-btn-danger">Borrar récords</button>
       </div>
     </div>
   </div>
